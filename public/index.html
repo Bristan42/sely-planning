@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Planning social</title>
+<style>
+:root{--fond:#fbfaf8;--carte:#fff;--texte:#17161a;--doux:#6d6a75;--trait:#e6e3dd;
+--accent:#c2410c;--accent-doux:#fff3ec;--ok:#15803d;--alerte:#b45309;--danger:#b91c1c;
+--x:#0f1419;--in:#0a66c2;--fb:#1877f2;--rd:#ff4500}
+@media(prefers-color-scheme:dark){:root{--fond:#141317;--carte:#1d1c22;--texte:#eeecf3;
+--doux:#a5a1ae;--trait:#2e2c37;--accent:#fb923c;--accent-doux:#2a1a10;--ok:#4ade80;
+--alerte:#fbbf24;--danger:#f87171;--x:#e7e9ea}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fond);color:var(--texte);
+font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1{font-size:18px;margin:0;letter-spacing:-.01em}
+.appli{display:grid;grid-template-columns:340px 1fr;height:100vh}
+@media(max-width:1000px){.appli{grid-template-columns:1fr;height:auto}
+ .col+.col{border-left:none;border-top:1px solid var(--trait)}}
+.col{overflow-y:auto;padding:18px}
+.col+.col{border-left:1px solid var(--trait)}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
+.sous{font-size:12px;color:var(--doux)}
+
+/* calendrier */
+.moisbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;gap:8px}
+.moisbar b{font-size:14px;text-transform:capitalize}
+.rond{border:1px solid var(--trait);background:var(--carte);color:var(--texte);
+ width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1;padding:0}
+.rond:hover{border-color:var(--doux)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal .jn{font-size:10px;color:var(--doux);text-align:center;padding:3px 0;text-transform:uppercase}
+.jour{min-height:56px;border:1px solid var(--trait);border-radius:8px;background:var(--carte);
+ padding:4px 5px;cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.jour:hover{border-color:var(--accent)}
+.jour.hors{opacity:.32}
+.jour.auj{border-color:var(--accent);border-width:2px;padding:3px 4px}
+.jour .n{font-size:11px;color:var(--doux)}
+.pastilles{display:flex;flex-wrap:wrap;gap:3px}
+.pt{width:7px;height:7px;border-radius:50%;display:inline-block}
+.legende{margin-top:12px;font-size:11.5px;color:var(--doux);display:flex;gap:11px;flex-wrap:wrap}
+.legende span{display:flex;align-items:center;gap:5px}
+
+/* liste */
+h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--doux);
+ margin:20px 0 9px;font-weight:650}
+.ligne{border:1px solid var(--trait);border-radius:9px;background:var(--carte);padding:8px 10px;
+ margin-bottom:6px;cursor:pointer;font-size:13px}
+.ligne:hover{border-color:var(--doux)}
+.ligne.sel{border-color:var(--accent);background:var(--accent-doux)}
+.ligne .h{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.ligne .t{color:var(--doux);font-size:11px;white-space:nowrap}
+.ligne .ap{color:var(--doux);margin-top:2px;display:-webkit-box;-webkit-line-clamp:1;
+ -webkit-box-orient:vertical;overflow:hidden}
+.etiq{font-size:9.5px;padding:2px 7px;border-radius:99px;border:1px solid var(--trait);
+ text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap}
+.etiq.pret{border-color:var(--ok);color:var(--ok)}
+.etiq.publie{border-color:var(--doux);color:var(--doux)}
+.vide{color:var(--doux);text-align:center;padding:34px 14px;font-size:13.5px}
+.filtres{display:flex;gap:5px;margin-bottom:9px}
+.filtres .ong{padding:4px 11px;font-size:12px}
+
+/* barre méta au-dessus de la carte */
+.meta{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.ong{padding:6px 12px;border:1px solid var(--trait);border-radius:8px;background:var(--carte);
+ cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;color:var(--texte)}
+.ong:hover{border-color:var(--doux)}
+.ong.on{border-color:var(--texte);font-weight:600}
+.meta input{padding:6px 9px;border:1px solid var(--trait);border-radius:8px;background:var(--carte);
+ color:var(--texte);font:inherit;font-size:13px}
+.meta input#cible{flex:1;min-width:130px}
+.sep{flex-basis:100%;height:0}
+
+/* appareil */
+.appareils{display:flex;gap:6px}
+.cadre{margin:0 auto;transition:width .18s}
+.cadre.tel{width:min(380px,100%);border:9px solid #2a2a30;border-radius:30px;padding:9px 7px;background:#fff}
+.cadre.pc{width:min(620px,100%);border:1px solid var(--trait);border-radius:10px;padding:16px;background:#fff}
+@media(prefers-color-scheme:dark){.cadre.pc,.cadre.tel{background:#0c0c0f}}
+
+/* ── rendus ── */
+.pv{color:#0f1419;font-size:15px;line-height:1.45}
+@media(prefers-color-scheme:dark){.pv{color:#e7e9ea}}
+.pv .corps,.pv .titre{white-space:pre-wrap;word-break:break-word;outline:none}
+.pv [contenteditable]:empty:before{content:attr(data-vide);color:#71767b}
+.pv [contenteditable]:focus{background:rgba(194,65,12,.07);border-radius:4px;
+ box-shadow:0 0 0 4px rgba(194,65,12,.07)}
+.pv .plus{color:#71767b}
+.pv .trop{background:rgba(185,28,28,.22);text-decoration:line-through;
+ text-decoration-color:#b91c1c;text-decoration-thickness:2px}
+.pv .av{background:linear-gradient(135deg,#c2410c,#fb923c);flex-shrink:0;display:flex;
+ align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px}
+.pv .media{position:relative}
+.pv .media img{display:block;width:100%;height:100%;object-fit:cover;background:#e9e9ea}
+.pv .grille{display:grid;gap:2px}
+.pv .grille.g1{grid-template-columns:1fr}
+.pv .grille.g2{grid-template-columns:1fr 1fr}
+.pv .grille.g3,.pv .grille.g4{grid-template-columns:1fr 1fr}
+.pv .grille.g3 .case:first-child{grid-row:span 2}
+.pv .case{position:relative;overflow:hidden;min-height:110px}
+.pv .grille.g1 .case{min-height:0}
+.pv .oter{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.62);color:#fff;border:0;
+ border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:13px;line-height:1;padding:0}
+.pv .reste{position:absolute;inset:0;background:rgba(0,0,0,.48);color:#fff;display:flex;
+ align-items:center;justify-content:center;font-size:22px;font-weight:600;pointer-events:none}
+
+.pv-x{display:flex;gap:11px}
+.pv-x .av{width:40px;height:40px;border-radius:50%}
+.pv-x .col2{flex:1;min-width:0}
+.pv-x .nom{font-weight:700;font-size:15px}
+.pv-x .nom em{font-style:normal;font-weight:400;color:#71767b}
+.pv-x .media{border-radius:16px;overflow:hidden;border:1px solid #cfd9de;margin-top:11px}
+.pv-x .media img{max-height:270px}
+.pv-x .actions{display:flex;justify-content:space-between;max-width:300px;margin-top:12px;
+ color:#71767b;font-size:13px}
+
+.pv-in{border:1px solid #d9d9d9;border-radius:8px;overflow:hidden;background:#fff}
+@media(prefers-color-scheme:dark){.pv-in{background:#1b1f23;border-color:#38434f}}
+.pv-in .tete{display:flex;gap:9px;padding:12px 12px 0;align-items:flex-start}
+.pv-in .av{width:48px;height:48px;border-radius:50%}
+.pv-in .nom{font-weight:600;font-size:14px;line-height:1.2}
+.pv-in .head{color:#00000099;font-size:12px;line-height:1.35}
+@media(prefers-color-scheme:dark){.pv-in .head{color:#ffffff99}}
+.pv-in .corps{padding:10px 12px 12px;font-size:14px}
+.pv-in .media img{max-height:300px}
+.pv-in .actions{display:flex;justify-content:space-around;padding:8px 0;
+ border-top:1px solid #e0e0e0;color:#00000099;font-size:13px;font-weight:600}
+@media(prefers-color-scheme:dark){.pv-in .actions{border-color:#38434f;color:#ffffff99}}
+
+.pv-fb{border:1px solid #dddfe2;border-radius:8px;overflow:hidden;background:#fff}
+@media(prefers-color-scheme:dark){.pv-fb{background:#242526;border-color:#3e4042}}
+.pv-fb .tete{display:flex;gap:9px;padding:12px 12px 0;align-items:center}
+.pv-fb .av{width:40px;height:40px;border-radius:50%}
+.pv-fb .nom{font-weight:600;font-size:14px}
+.pv-fb .mm{color:#65676b;font-size:12px}
+@media(prefers-color-scheme:dark){.pv-fb .mm{color:#b0b3b8}}
+.pv-fb .corps{padding:10px 12px;font-size:15px}
+.pv-fb .actions{display:flex;justify-content:space-around;padding:7px 0;
+ border-top:1px solid #ced0d4;color:#65676b;font-size:14px;font-weight:600}
+@media(prefers-color-scheme:dark){.pv-fb .actions{border-color:#3e4042;color:#b0b3b8}}
+
+.pv-rd{border:1px solid #ccc;border-radius:6px;background:#fff;display:flex}
+@media(prefers-color-scheme:dark){.pv-rd{background:#1a1a1b;border-color:#343536}}
+.pv-rd .votes{width:40px;background:#f8f9fa;padding:8px 0;text-align:center;color:#878a8c;
+ font-size:12px;font-weight:700;line-height:1.9;flex-shrink:0}
+@media(prefers-color-scheme:dark){.pv-rd .votes{background:#161617}}
+.pv-rd .corps2{padding:8px 10px 10px;flex:1;min-width:0}
+.pv-rd .sub{font-size:12px;color:#787c7e;margin-bottom:5px}
+.pv-rd .titre{font-size:18px;font-weight:500;line-height:1.25;margin-bottom:7px}
+.pv-rd .corps{font-size:14px;color:#1c1c1c}
+@media(prefers-color-scheme:dark){.pv-rd .corps{color:#d7dadc}}
+.pv-rd .media{margin-top:9px;border-radius:4px;overflow:hidden}
+.pv-rd .media img{max-height:260px}
+.pv-rd .actions{margin-top:9px;color:#878a8c;font-size:12px;font-weight:700;display:flex;gap:14px}
+
+/* pied de carte */
+.pied{max-width:620px;margin:16px auto 0}
+.jauge{font-size:12px;color:var(--doux);display:flex;justify-content:space-between;gap:10px}
+.jauge.mauvais{color:var(--danger);font-weight:600}
+.controles{margin-top:11px;border:1px solid var(--trait);border-radius:10px;background:var(--carte);
+ padding:11px 13px}
+.ctrl{display:flex;gap:8px;font-size:13px;margin-bottom:5px;align-items:flex-start}
+.ctrl:last-child{margin-bottom:0}
+.ctrl i{font-style:normal;flex-shrink:0}
+.ctrl.ko i{color:var(--danger)}
+.ctrl.att i{color:var(--alerte)}
+.ctrl.ok i{color:var(--ok)}
+.pieds{display:flex;justify-content:space-between;align-items:center;margin-top:11px;gap:10px}
+.lien{background:none;border:0;color:var(--doux);cursor:pointer;font:inherit;font-size:12.5px;
+ text-decoration:underline;text-underline-offset:3px;padding:0}
+.lien:hover{color:var(--texte)}
+.lien.d:hover{color:var(--danger)}
+.note{font-size:12px;color:var(--doux);margin-top:9px;line-height:1.5}
+.flash{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--texte);
+ color:var(--fond);padding:8px 18px;border-radius:99px;font-size:13px;opacity:0;
+ transition:opacity .25s;pointer-events:none;z-index:9}
+.flash.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="flash" id="flash"></div>
+<div class="appli">
+
+  <div class="col">
+    <header><h1>Planning social</h1>
+      <button class="rond" onclick="nouveau()" title="Nouveau post">+</button></header>
+    <div class="moisbar">
+      <button class="rond" onclick="mois(-1)">‹</button>
+      <b id="titremois"></b>
+      <button class="rond" onclick="mois(1)">›</button>
+    </div>
+    <div class="cal" id="cal"></div>
+    <div class="legende" id="legende"></div>
+    <h2 id="titreListe">À venir</h2>
+    <div class="filtres">
+      <button class="ong on" data-f="tout" onclick="setFiltre('tout')">Tout</button>
+      <button class="ong" data-f="sely" onclick="setFiltre('sely')">SELY</button>
+      <button class="ong" data-f="perso" onclick="setFiltre('perso')">Perso</button>
+    </div>
+    <div id="liste"></div>
+  </div>
+
+  <div class="col">
+    <header>
+      <span class="sous" id="etatEnr">Enregistrement automatique</span>
+      <div class="appareils">
+        <button id="btel" class="ong on" onclick="appareil('tel')">Téléphone</button>
+        <button id="bpc" class="ong" onclick="appareil('pc')">Ordinateur</button>
+      </div>
+    </header>
+
+    <div class="meta" id="meta">
+      <span id="onglets" style="display:flex;gap:7px;flex-wrap:wrap"></span>
+      <span id="optionX"></span>
+      <span class="sep"></span>
+      <input type="date" id="date" onchange="changeMeta()">
+      <input type="time" id="heure" onchange="changeMeta()">
+      <span class="etiq" id="chipEtat" onclick="cyclerEtat()">brouillon</span>
+      <span class="etiq" id="chipPortee" onclick="cyclerPortee()"
+            title="À qui appartient ce post : l'app ou ta marque personnelle">SELY</span>
+      <input id="cible" placeholder="r/shopify · nom du groupe" oninput="changeMeta()">
+    </div>
+
+    <div class="cadre tel" id="cadre"><div id="carte"></div></div>
+
+    <div class="pied">
+      <div class="jauge" id="jauge"></div>
+      <div class="controles" id="controles"></div>
+      <div class="pieds">
+        <span>
+          <button class="lien" onclick="$('fichier').click()">Ajouter des images</button>
+          <input type="file" id="fichier" multiple accept="image/png,image/jpeg,image/gif,image/webp"
+                 onchange="televerser(this)" hidden>
+        </span>
+        <button class="lien d" onclick="supprimer()">Supprimer ce post</button>
+      </div>
+      <div class="note" id="noteAuto"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const R = {
+  x:{nom:"X",couleur:"var(--x)",limite:280,cible:[120,260],titre:false,auto:true,urlFixe:23,
+     note:"Publication automatisable (API à l'usage : ~0,015 $ le post, 0,20 $ avec un lien)."},
+  linkedin:{nom:"LinkedIn",couleur:"var(--in)",limite:3000,cible:[400,900],titre:false,auto:true,
+     note:"Automatisable via « Share on LinkedIn » (w_member_social). App à faire vérifier, jeton à renouveler tous les 60 jours."},
+  facebook:{nom:"Facebook",couleur:"var(--fb)",limite:63206,cible:[300,700],titre:false,auto:false,
+     note:"Publication automatique impossible : Meta a supprimé l'API Groups le 22 avril 2024, pour tout le monde."},
+  reddit:{nom:"Reddit",couleur:"var(--rd)",limite:40000,cible:[300,450],titre:true,limiteTitre:300,auto:false,
+     note:"Limites Reddit : 300 caractères pour le titre, 40 000 pour le corps d'un post, 10 000 pour un commentaire. Publication automatique impossible (accès API refusé en août 2026) : elle se fait à la main, depuis old.reddit."}
+};
+/* Limites des comptes GRATUITS, vérifiées le 11 août 2026.
+   « max » = poids maximum par image, en Mo. « nb » = images par publication. */
+const IMG = {
+  x:{ratio:"16:9 ou 1:1",ideal:"1600 × 900",max:5,nb:4,
+     video:"2 min 20 s maximum en gratuit, 512 Mo",
+     autre:"GIF animé : 15 Mo, et un seul par post (il ne se mélange pas aux photos)."},
+  linkedin:{ratio:"1.91:1",ideal:"1200 × 627",max:5,nb:20,
+     video:"15 min depuis un ordinateur (10 min depuis mobile), 5 Go",
+     autre:"Garde le même format d'image pour toutes : sinon LinkedIn recadre de travers."},
+  facebook:{ratio:"1.91:1",ideal:"1200 × 630",max:15,nb:49,
+     video:"jusqu'à 4 Go",
+     autre:"Chiffres à prendre avec prudence : les sources se contredisent entre 15 et 30 Mo par photo."},
+  reddit:{ratio:"libre",ideal:"1200 × 900",max:20,nb:20,
+     video:"15 min, 1 Go",
+     autre:"Au-delà d'une image, Reddit crée une galerie défilante. GIF : 100 Mo."}
+};
+const ETATS=["brouillon","pret","publie"];
+
+let posts=[], sel=null, reseau="x", curseur=new Date(), vue="tel";
+let texte="", titre="", images=[], tempo=null, enEdition=false;
+let portee="sely";          // sely | perso — les deux passent par les mêmes comptes
+let filtre="tout";          // tout | sely | perso
+let premiumX = localStorage.getItem("premiumX")==="1";
+
+/* Limite effective : X Premium monte à 25 000, mais seuls les 280 premiers
+   caractères s'affichent dans le fil avant « Show more ». */
+function limite(c){return (c===R.x&&premiumX)?25000:c.limite}
+
+/* Longueur telle que le réseau la compte. Sur X, toute URL vaut exactement
+   23 caractères, courte ou longue — un lien de 90 caractères n'en coûte que 23. */
+function longueur(t,c){
+  if(!c.urlFixe) return t.length;
+  return t.replace(/https?:\/\/\S+/g,"u".repeat(c.urlFixe)).length;
+}
+/* Position de coupe réelle, trouvée par dichotomie (les URL faussent l'index). */
+function indexCoupe(t,c){
+  const max=limite(c);
+  if(longueur(t,c)<=max) return -1;
+  let bas=0, haut=t.length;
+  while(bas<haut){
+    const m=(bas+haut+1)>>1;
+    if(longueur(t.slice(0,m),c)<=max) bas=m; else haut=m-1;
+  }
+  return bas;
+}
+function basculerPremium(){
+  premiumX=!premiumX; localStorage.setItem("premiumX",premiumX?"1":"0");
+  dessinerOnglets(); dessinerCarte();
+}
+
+const $=id=>document.getElementById(id);
+function flash(t){const f=$("flash");f.textContent=t;f.classList.add("on");
+  setTimeout(()=>f.classList.remove("on"),1900)}
+function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+
+async function chargerTout(){
+  const rep = await fetch("/api/posts");
+  posts = await rep.json().catch(()=>[]);
+  if(posts.length){ const p=[...posts].sort((a,b)=>(a.date+a.heure).localeCompare(b.date+b.heure));
+    choisir((p.find(x=>x.date>=iso(new Date()))||p[p.length-1]).id); }
+  else nouveau();
+  dessinerCal();
+}
+
+/* Enregistrement automatique, différé : on n'écrit pas à chaque frappe. */
+function planifierEnr(){
+  $("etatEnr").textContent="Modifications non enregistrées…";
+  clearTimeout(tempo);
+  tempo=setTimeout(enregistrer,700);
+}
+async function enregistrer(){
+  if(!texte.trim()&&!titre.trim()&&!images.length){ $("etatEnr").textContent="Enregistrement automatique"; return; }
+  const o={id:sel||("p"+Date.now()),reseau,portee,titre,texte,images,
+    cible:$("cible").value,date:$("date").value,heure:$("heure").value,
+    etat:$("chipEtat").textContent.trim(),
+    cree:(posts.find(x=>x.id===sel)||{}).cree||new Date().toISOString().slice(0,16).replace("T"," ")};
+  const i=posts.findIndex(x=>x.id===o.id);
+  if(i>=0)posts[i]=o; else posts.push(o);
+  sel=o.id;
+  await fetch("/api/posts",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(posts)});
+  $("etatEnr").textContent="Enregistré";
+  dessinerCal();dessinerListe();
+}
+
+/* ── onglets, calendrier, liste ── */
+function dessinerOnglets(){
+  $("onglets").innerHTML=Object.entries(R).map(([k,v])=>
+    `<button class="ong ${k===reseau?"on":""}" onclick="choisirReseau('${k}')">
+      <span class="pt" style="background:${v.couleur}"></span>${v.nom}</button>`).join("");
+  $("legende").innerHTML=Object.entries(R).map(([k,v])=>
+    `<span><i class="pt" style="background:${v.couleur}"></i>${v.nom}</span>`).join("");
+  $("optionX").innerHTML = reseau==="x"
+    ? `<span class="etiq ${premiumX?"pret":""}" onclick="basculerPremium()"
+         title="X Premium relève la limite à 25 000 caractères">
+         ${premiumX?"Premium · 25 000":"Compte gratuit · 280"}</span>` : "";
+}
+function choisirReseau(k){reseau=k;dessinerOnglets();dessinerCarte();planifierEnr();}
+function mois(d){curseur.setMonth(curseur.getMonth()+d);dessinerCal();}
+function dessinerCal(){
+  $("titremois").textContent=curseur.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+  const p=new Date(curseur.getFullYear(),curseur.getMonth(),1);
+  const debut=new Date(p); debut.setDate(1-((p.getDay()+6)%7));
+  const auj=iso(new Date());
+  let h=["lun","mar","mer","jeu","ven","sam","dim"].map(j=>`<div class="jn">${j}</div>`).join("");
+  for(let i=0;i<42;i++){
+    const d=new Date(debut); d.setDate(debut.getDate()+i);
+    const k=iso(d), duJour=posts.filter(x=>x.date===k);
+    h+=`<div class="jour ${d.getMonth()!==curseur.getMonth()?"hors":""} ${k===auj?"auj":""}"
+        onclick="jourClic('${k}')"><div class="n">${d.getDate()}</div>
+        <div class="pastilles">${duJour.map(x=>
+          `<span class="pt" style="background:${(R[x.reseau]||{}).couleur||"#999"}"></span>`).join("")}</div></div>`;
+  }
+  $("cal").innerHTML=h;
+  dessinerListe();
+}
+function jourClic(k){
+  const duJour=posts.filter(x=>x.date===k);
+  if(duJour.length)choisir(duJour[0].id);
+  else{nouveau();$("date").value=k;planifierEnr();}
+}
+function setFiltre(f){
+  filtre=f;
+  document.querySelectorAll(".filtres .ong").forEach(b=>
+    b.classList.toggle("on",b.dataset.f===f));
+  dessinerListe();
+}
+function dessinerListe(){
+  const auj=iso(new Date());
+  const a=[...posts]
+    .filter(p=>filtre==="tout"||(p.portee||"sely")===filtre)
+    .sort((x,y)=>(x.date+x.heure).localeCompare(y.date+y.heure));
+  const futurs=a.filter(p=>p.date>=auj), passes=a.filter(p=>p.date<auj).reverse();
+  const ordre=futurs.concat(passes);
+  $("titreListe").textContent=futurs.length?`À venir — ${futurs.length}`:"Tout";
+  if(!ordre.length){$("liste").innerHTML='<div class="vide">Rien de planifié.<br>Clique un jour, ou le +.</div>';return}
+  $("liste").innerHTML=ordre.map(p=>`
+    <div class="ligne ${sel===p.id?"sel":""}" onclick="choisir('${p.id}')">
+      <div class="h"><span><span class="pt" style="background:${(R[p.reseau]||{}).couleur}"></span>
+        ${(R[p.reseau]||{}).nom||p.reseau}</span>
+        <span class="t">${p.date} ${p.heure||""}
+        ${(p.portee||'sely')==='perso'?'<span class="etiq publie">perso</span>':''}${p.etat&&p.etat!=="brouillon"?`<span class="etiq ${p.etat}">${p.etat}</span>`:""}</span></div>
+      <div class="ap">${esc((p.titre?p.titre+" — ":"")+(p.texte||"")).slice(0,90)}</div>
+    </div>`).join("");
+}
+
+/* ── sélection ── */
+function nouveau(){
+  sel=null;texte="";titre="";images=[];portee="sely";
+  $("date").value=iso(new Date());$("heure").value="09:00";
+  $("chipEtat").textContent="brouillon";$("chipEtat").className="etiq";
+  $("cible").value="";
+  majChipPortee();dessinerOnglets();dessinerCarte();dessinerListe();
+}
+function choisir(id){
+  const p=posts.find(x=>x.id===id); if(!p)return;
+  sel=id;reseau=p.reseau||"x";texte=p.texte||"";titre=p.titre||"";
+  // compatibilité : les anciens posts n'avaient qu'une image, en chaîne.
+  images=Array.isArray(p.images)?p.images.slice():(p.image?[p.image]:[]);
+  $("date").value=p.date||"";$("heure").value=p.heure||"";$("cible").value=p.cible||"";
+  portee=p.portee||"sely";
+  $("chipEtat").textContent=p.etat||"brouillon";
+  $("chipEtat").className="etiq"+(p.etat&&p.etat!=="brouillon"?" "+p.etat:"");
+  $("etatEnr").textContent="Enregistré";
+  majChipPortee();dessinerOnglets();dessinerCarte();dessinerListe();
+}
+function cyclerPortee(){
+  portee = portee==="sely" ? "perso" : "sely";
+  majChipPortee(); planifierEnr(); dessinerListe();
+}
+function majChipPortee(){
+  const c=$("chipPortee");
+  c.textContent = portee==="sely" ? "SELY" : "perso";
+  c.className = "etiq"+(portee==="perso"?" publie":" pret");
+}
+function cyclerEtat(){
+  const c=$("chipEtat"), i=ETATS.indexOf(c.textContent.trim());
+  const n=ETATS[(i+1)%ETATS.length];
+  c.textContent=n;c.className="etiq"+(n!=="brouillon"?" "+n:"");
+  planifierEnr();
+}
+function changeMeta(){planifierEnr();dessinerCarte();}
+async function supprimer(){
+  if(!sel){nouveau();return}
+  posts=posts.filter(x=>x.id!==sel);
+  await fetch("/api/posts",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(posts)});
+  nouveau();dessinerCal();flash("Supprimé.");
+}
+
+/* ── image ── */
+async function televerser(input){
+  const spec=IMG[reseau];
+  for(const f of input.files){
+    if(images.length>=spec.nb){
+      flash(`${R[reseau].nom} n'accepte que ${spec.nb} image(s) par publication.`); break;
+    }
+    if(f.size/1048576>spec.max){
+      flash(`« ${f.name} » fait ${(f.size/1048576).toFixed(1)} Mo — au-dessus des ${spec.max} Mo de ${R[reseau].nom}.`);
+      continue;
+    }
+    const r=await fetch("/api/image",{method:"POST",
+      headers:{"Content-Type":f.type,"X-Nom":f.name.replace(/[^\w.-]/g,"-")},body:f});
+    if(!r.ok){flash("Format refusé : JPG, PNG, GIF ou WebP.");continue}
+    images.push((await r.json()).chemin);
+  }
+  input.value="";dessinerCarte();planifierEnr();
+}
+function oterImage(i){images.splice(i,1);dessinerCarte();planifierEnr();}
+
+/* ── la carte, éditable ──
+   On ne redessine jamais pendant la frappe : ça détruirait le curseur.
+   Au focus le texte est brut, au blur il est enrichi (coupe, « voir plus »). */
+function appareil(v){vue=v;$("cadre").className="cadre "+v;
+  $("btel").classList.toggle("on",v==="tel");$("bpc").classList.toggle("on",v==="pc");}
+
+function lienifie(t){return esc(t).replace(/(https?:\/\/\S+)/g,'<span style="color:#0a66c2">$1</span>')}
+function enrichi(t,c){
+  if(!t)return "";
+  let dedans=t,dehors="";
+  const i=indexCoupe(t,c);
+  if(i>=0){dedans=t.slice(0,i);dehors=t.slice(i);}
+  let h = (reseau==="linkedin"&&dedans.length>200)
+    ? lienifie(dedans.slice(0,200))+'<span class="plus">… voir plus</span>'
+    : lienifie(dedans);
+  if(dehors)h+=`<span class="trop">${lienifie(dehors)}</span>`;
+  return h;
+}
+/* Grille de médias : au-delà d'une image, les réseaux affichent une mosaïque
+   (X, Facebook) ou une galerie défilante (LinkedIn, Reddit). */
+function blocImage(){
+  if(!images.length) return "";
+  const gal = reseau==="linkedin"||reseau==="reddit";
+  const vus = gal ? images.slice(0,1) : images.slice(0,4);
+  const reste = images.length - vus.length;
+  const cases = vus.map((src,i)=>
+    `<div class="case"><img src="${esc(src)}" alt="">
+      <button class="oter" onclick="oterImage(${i})" title="Retirer">×</button>
+      ${(reste&&i===vus.length-1)?`<span class="reste">+${reste}</span>`:""}</div>`).join("");
+  return `<div class="media grille g${vus.length}">${cases}</div>`;
+}
+function champ(cls,val,vide){
+  return `<div class="${cls}" contenteditable="plaintext-only" data-vide="${vide}"
+    data-champ="${cls==='titre'?'titre':'texte'}">${enrichi(val,R[reseau])||""}</div>`;
+}
+
+function dessinerCarte(){
+  const c=R[reseau], h=$("heure").value||"1 h", cible=esc($("cible").value);
+  const corps=champ("corps",texte,"Écris ici, comme tu parles."), img=blocImage();
+  let html;
+  if(reseau==="x"){
+    html=`<div class="pv pv-x"><div class="av">B</div><div class="col2">
+      <div class="nom">Bristan <em>@Bristan42 · ${h}</em></div>${corps}${img}
+      <div class="actions"><span>💬</span><span>🔁</span><span>♡</span><span>📊</span></div>
+    </div></div>`;
+  }else if(reseau==="linkedin"){
+    html=`<div class="pv pv-in"><div class="tete"><div class="av">B</div><div>
+      <div class="nom">Bristan</div>
+      <div class="head">Solo entrepreneur · IA &amp; apps<br>${h} · 🌐</div></div></div>
+      ${corps}${img}
+      <div class="actions"><span>J'aime</span><span>Commenter</span><span>Republier</span><span>Envoyer</span></div></div>`;
+  }else if(reseau==="facebook"){
+    html=`<div class="pv pv-fb"><div class="tete"><div class="av">B</div><div>
+      <div class="nom">Bristan</div>
+      <div class="mm">${cible||"Nom du groupe"} · ${h} · 🌐</div></div></div>
+      ${corps}${img}
+      <div class="actions"><span>👍 J'aime</span><span>💬 Commenter</span><span>↪ Partager</span></div></div>`;
+  }else{
+    html=`<div class="pv pv-rd"><div class="votes">▲<br>1<br>▼</div><div class="corps2">
+      <div class="sub"><b>${cible||"r/…"}</b> · Publié par u/Bristan42 il y a 1 h</div>
+      ${champ("titre",titre,"Titre du post")}${corps}${img}
+      <div class="actions"><span>💬 0 commentaires</span><span>Partager</span><span>Enregistrer</span></div>
+    </div></div>`;
+  }
+  $("carte").innerHTML=html;
+  $("carte").querySelectorAll("[contenteditable]").forEach(el=>{
+    const quoi=el.dataset.champ;
+    el.addEventListener("focus",()=>{enEdition=true;el.textContent=(quoi==="titre"?titre:texte)});
+    el.addEventListener("input",()=>{
+      if(quoi==="titre")titre=el.textContent; else texte=el.textContent;
+      majPied();planifierEnr();});
+    el.addEventListener("blur",()=>{
+      enEdition=false;
+      el.innerHTML=enrichi(quoi==="titre"?titre:texte,R[reseau])||"";});
+  });
+  $("noteAuto").textContent=c.note;
+  majPied();
+}
+
+/* ── jauge et contrôles ── */
+function majPied(){
+  const c=R[reseau], t=texte.trim(), max=limite(c);
+  const n=longueur(t,c), brut=t.length;
+  const detail = (c.urlFixe&&n!==brut) ? ` (${brut} tapés, les liens comptent pour ${c.urlFixe})` : "";
+  $("jauge").innerHTML=`<span>${n} / ${max} caractères${detail}</span>
+    <span>cible ${c.cible[0]}–${c.cible[1]}${c.titre?` · titre ${titre.length}/${c.limiteTitre}`:""}</span>`;
+  $("jauge").className="jauge"+(n>max||titre.length>(c.limiteTitre||1e9)?" mauvais":"");
+
+  const liens=(t.match(/https?:\/\/\S+/g)||[]).length, out=[];
+  const add=(cl,ic,tx)=>out.push(`<div class="ctrl ${cl}"><i>${ic}</i><span>${tx}</span></div>`);
+  const [cmin,cmax]=c.cible;
+
+  if(n>max) add("ko","✕",`${n} caractères : ${n-max} de trop. La partie barrée ne partira pas.`);
+  else if(n>cmax) add("att","!",`${n} caractères. Au-delà de ${cmax} sur ${c.nom}, ça se lit comme un communiqué.`);
+  else if(n&&n<cmin) add("att","!",`${n} caractères. Un peu court pour dire quelque chose.`);
+  else if(n) add("ok","✓",`${n} caractères — bonne longueur.`);
+
+  if(c.titre&&titre.length>c.limiteTitre) add("ko","✕",`Titre trop long : ${titre.length}/${c.limiteTitre}.`);
+  if(reseau==="x"&&liens) add("att","!",`${liens} lien(s), comptés ${liens*c.urlFixe} caractères quelle que soit leur longueur. Mais la portée chute nettement, et l'API facture 0,20 $ au lieu de 0,015 $ : mets-le en réponse.`);
+  if(reseau==="x"&&premiumX&&n>280) add("att","!","Seuls les 280 premiers caractères s'affichent dans le fil, le reste est masqué derrière « Show more ». L'accroche doit tenir avant la coupe.");
+  if(reseau==="reddit"&&liens) add("ko","✕","Un lien dans un post Reddit passe pour de l'auto-promotion (règle 1 du sub). À donner en commentaire si on te le demande.");
+  if(reseau==="facebook"&&liens) add("att","!","Un lien dans un post de groupe fait chuter la portée. Mets-le en premier commentaire.");
+  if(reseau==="linkedin"&&n) add("ok","✓","Seuls les 200 premiers caractères s'affichent avant « voir plus ».");
+
+  const emo=(t.match(/\p{Extended_Pictographic}/gu)||[]).length;
+  if(emo>3) add("att","!",`${emo} émojis. Au-delà de deux ou trois, ça fait publication de marque.`);
+  if(/\*\*/.test(t)&&reseau!=="reddit") add("att","!","Le gras Markdown ne s'affichera pas ici, il restera tel quel.");
+  if(/^(#\w+\s*){3,}/m.test(t)) add("att","!","Une pile de hashtags fait automatique. Deux maximum.");
+
+  const mj=posts.filter(p=>p.date===$("date").value&&p.reseau===reseau&&p.id!==sel);
+  if(mj.length) add("att","!",`${mj.length} autre(s) post(s) le même jour sur ${c.nom}. Espace-les.`);
+  const sp=IMG[reseau];
+  if(images.length){
+    const trop=images.length>sp.nb;
+    add(trop?"ko":"ok",trop?"✕":"✓",
+      `${images.length} image(s) sur ${sp.nb} autorisées en gratuit sur ${c.nom}`+
+      (trop?" — les suivantes ne partiront pas.":`. Format conseillé : ${sp.ideal} (${sp.ratio}), ${sp.max} Mo maximum.`));
+  }
+  if(!c.auto) add("ko","✕","Publication automatique impossible sur ce réseau — elle se fera à la main.");
+
+  $("controles").innerHTML=out.join("")||
+    '<div class="ctrl"><i>·</i><span>Écris quelque chose pour lancer les contrôles.</span></div>';
+}
+
+document.addEventListener("DOMContentLoaded",()=>{dessinerOnglets();chargerTout();});
+</script>
+</body>
+</html>

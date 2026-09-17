@@ -1,0 +1,24 @@
+# Planning social SELY — Worker avec fichiers statiques.
+#
+# Worker et non Pages : Cloudflare refuse la création d'un projet Pages tant que
+# l'adresse du compte n'est pas vérifiée. Les Workers n'ont pas cette contrainte,
+# et c'est de toute façon la voie recommandée par Cloudflare pour un projet neuf.
+
+name = "sely-planning"
+main = "src/index.js"
+compatibility_date = "2026-08-11"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# Le Worker voit chaque requête (routes /api et /images).
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sely-planning"
+database_id = "8cfbbb78-7995-4ee9-9474-b133722880c1"
+
+[[kv_namespaces]]
+binding = "MEDIAS"
+id = "6a231942374d4f62933dbffae64d1f7d"
